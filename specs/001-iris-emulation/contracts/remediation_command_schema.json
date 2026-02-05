@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://instance.iris-emulation/schemas/remediation-command.v1.json",
+  "title": "RemediationCommand",
+  "description": "External JSON command for IRIS remediation actions",
+  "type": "object",
+  "properties": {
+    "command_id": {
+      "type": "string",
+      "description": "UUID v4 identifier for command tracking",
+      "format": "uuid",
+      "examples": ["123e4567-e89b-12d3-a456-426614174000"]
+    },
+    "error_type": {
+      "type": "string",
+      "description": "Category of error being remediated",
+      "enum": ["config", "license", "resource"],
+      "examples": ["config"]
+    },
+    "severity": {
+      "type": "integer",
+      "description": "Error severity from original IRIS message",
+      "enum": [0, 1, 2, 3]
+    },
+    "recommended_action": {
+      "type": "string",
+      "description": "Human-readable description of action to take",
+      "minLength": 1,
+      "maxLength": 200,
+      "examples": ["Increase global buffer size to 512MB"]
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Action-specific parameters (schema depends on error_type)",
+      "oneOf": [
+        {
+          "title": "ConfigParameters",
+          "description": "Parameters for IRIS configuration changes",
+          "type": "object",
+          "properties": {
+            "cpf_section": {
+              "type": "string",
+              "enum": ["config", "startup", "TCP", "SQL"],
+              "description": "CPF file section name"
+            },
+            "parameter": {
+              "type": "string",
+              "description": "Parameter name within section",
+              "examples": ["globals", "routines", "locksiz"]
+            },
+            "new_value": {
+              "type": "string",
+              "description": "New value to set (as string, will be type-validated by tool)"
+            },
+            "current_value": {
+              "type": ["string", "null"],
+              "description": "Expected current value for safety check (optional)"
+            }
+          },
+          "required": ["cpf_section", "parameter", "new_value"],
+          "additionalProperties": false
+        },
+        {
+          "title": "ResourceParameters",
+          "description": "Parameters for OS resource configuration",
+          "type": "object",
+          "properties": {
+            "kernel_param": {
+              "type": "string",
+              "description": "Kernel parameter path",
+              "examples": ["kernel.shmmax", "kernel.shmall", "vm.swappiness"]
+            },
+            "new_value": {
+              "type": "integer",
+              "description": "New value (bytes or count depending on parameter)"
+            },
+            "min_value": {
+              "type": ["integer", "null"],
+              "description": "Minimum safe value (optional validation)"
+            },
+            "max_value": {
+              "type": ["integer", "null"],
+              "description": "Maximum safe value (optional validation)"
+            }
+          },
+          "required": ["kernel_param", "new_value"],
+          "additionalProperties": false
+        },
+        {
+          "title": "LicenseParameters",
+          "description": "Parameters for license-related actions",
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["check_expiry", "validate_key", "report_usage"]
+            }
+          },
+          "required": ["action"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "requires_restart": {
+      "type": "boolean",
+      "description": "Whether remediation requires IRIS instance restart",
+      "examples": [true]
+    },
+    "execution_order": {
+      "type": "array",
+      "description": "Ordered list of tool names to execute",
+      "items": {
+        "type": "string",
+        "enum": ["iris_config", "os_config", "iris_restart"]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "examples": [["iris_config", "iris_restart"]]
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "If true, validate but don't apply changes",
+      "default": false
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "description": "Maximum execution time in seconds",
+      "minimum": 10,
+      "maximum": 300,
+      "default": 60
+    }
+  },
+  "required": [
+    "command_id",
+    "error_type",
+    "severity",
+    "recommended_action",
+    "parameters",
+    "requires_restart",
+    "execution_order"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "command_id": "123e4567-e89b-12d3-a456-426614174000",
+      "error_type": "config",
+      "severity": 2,
+      "recommended_action": "Increase global buffer size to 512MB",
+      "parameters": {
+        "cpf_section": "config",
+        "parameter": "globals",
+        "new_value": "512",
+        "current_value": "256"
+      },
+      "requires_restart": true,
+      "execution_order": ["iris_config", "iris_restart"],
+      "dry_run": false,
+      "timeout_seconds": 120
+    }
+  ]
+}

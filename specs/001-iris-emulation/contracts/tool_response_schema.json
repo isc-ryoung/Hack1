@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://instance.iris-emulation/schemas/tool-response.v1.json",
+  "title": "ToolResult",
+  "description": "Outcome of a single tool execution",
+  "type": "object",
+  "properties": {
+    "tool_name": {
+      "type": "string",
+      "description": "Name of tool executed",
+      "enum": [
+        "iris_config",
+        "os_config",
+        "iris_restart",
+        "message_publisher",
+        "command_consumer"
+      ],
+      "examples": ["iris_config"]
+    },
+    "command_id": {
+      "type": "string",
+      "description": "UUID linking to originating RemediationCommand",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "description": "Execution outcome",
+      "enum": ["success", "failure", "partial"],
+      "x-enum-descriptions": {
+        "success": "Tool completed successfully with all changes applied",
+        "failure": "Tool failed to execute or validation failed",
+        "partial": "Some changes applied but others failed"
+      }
+    },
+    "execution_time_ms": {
+      "type": "integer",
+      "description": "Duration in milliseconds",
+      "minimum": 0,
+      "maximum": 60000,
+      "examples": [1250]
+    },
+    "changes_applied": {
+      "type": "object",
+      "description": "Map of parameter name to change details",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "parameter": {
+              "type": "string",
+              "description": "Parameter name"
+            },
+            "old_value": {
+              "type": ["string", "integer", "null"],
+              "description": "Previous value (null if new parameter)"
+            },
+            "new_value": {
+              "type": ["string", "integer"],
+              "description": "New value after change"
+            },
+            "validated": {
+              "type": "boolean",
+              "description": "Whether change was validated before application"
+            }
+          },
+          "required": ["parameter", "old_value", "new_value", "validated"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "error_message": {
+      "type": ["string", "null"],
+      "description": "Error details if status=failure (required for failure, null otherwise)",
+      "maxLength": 500
+    },
+    "requires_user_action": {
+      "type": "boolean",
+      "description": "True if manual intervention needed",
+      "default": false
+    },
+    "rollback_available": {
+      "type": "boolean",
+      "description": "True if changes can be reverted",
+      "default": false
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "OpenTelemetry trace ID for correlation",
+      "pattern": "^[a-f0-9]{32}$"
+    }
+  },
+  "required": [
+    "tool_name",
+    "command_id",
+    "status",
+    "execution_time_ms",
+    "changes_applied",
+    "error_message",
+    "requires_user_action",
+    "rollback_available",
+    "trace_id"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "failure" } }
+      },
+      "then": {
+        "properties": {
+          "error_message": { "type": "string", "minLength": 1 },
+          "changes_applied": { "type": "object", "maxProperties": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "success" } }
+      },
+      "then": {
+        "properties": {
+          "error_message": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "tool_name": "iris_config",
+      "command_id": "123e4567-e89b-12d3-a456-426614174000",
+      "status": "success",
+      "execution_time_ms": 1250,
+      "changes_applied": {
+        "globals": {
+          "parameter": "globals",
+          "old_value": "256",
+          "new_value": "512",
+          "validated": true
+        }
+      },
+      "error_message": null,
+      "requires_user_action": false,
+      "rollback_available": true,
+      "trace_id": "a1b2c3d4e5f6789012345678901234ab"
+    },
+    {
+      "tool_name": "os_config",
+      "command_id": "123e4567-e89b-12d3-a456-426614174001",
+      "status": "failure",
+      "execution_time_ms": 450,
+      "changes_applied": {},
+      "error_message": "Permission denied: sudo required for kernel parameter changes",
+      "requires_user_action": true,
+      "rollback_available": false,
+      "trace_id": "b2c3d4e5f67890123456789012345abc"
+    }
+  ]
+}
