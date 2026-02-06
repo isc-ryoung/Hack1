@@ -62,7 +62,7 @@
 
 ### Tests for User Story 1 (Write these tests FIRST, ensure they FAIL)
 
-- [ ] T022 [P] [US1] Create contract test in tests/contract/test_message_generator_contract.py: Verify LLM prompt structure, response parsing, temperature=0.7, few-shot examples from log_samples/
+- [X] T022 [P] [US1] Create contract test in tests/contract/test_message_generator_contract.py: Verify LLM prompt structure, response parsing, temperature=0.7, few-shot examples from log_samples/
 - [ ] T023 [P] [US1] Create integration test in tests/integration/test_message_generation.py: End-to-end message generation for config/license/resource errors, validate against IRIS format regex
 - [ ] T024 [P] [US1] Create unit test in tests/unit/test_iris_message_parser.py: Test regex parsing of all category types, edge cases (multi-digit PID, severity 0-3, nested categories)
 - [ ] T025 [P] [US1] Create unit test in tests/unit/test_message_generator_agent.py: Mock LLM responses, verify format validation, error handling for malformed LLM output
